@@ -63,13 +63,18 @@ namespace vuh {
 		}
 
 		// helper
-		template<class T, size_t... I>
-		auto dscinfos2writesets(vk::DescriptorSet dscset, const T& infos
+        template<class T, class T1, size_t... I>
+        auto dscinfos2writesets(vk::DescriptorSet dscset, const T& infos, const T1& infostex
 		                        , std::index_sequence<I...>
 		                        )-> std::array<vk::WriteDescriptorSet, sizeof...(I)>
 		{
+            auto istex = [&](int i) {
+                return (bool)infostex[i];
+            };
 			auto r = std::array<vk::WriteDescriptorSet, sizeof...(I)>{{
-				{dscset, uint32_t(I), 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &infos[I]}...
+                {dscset, uint32_t(I), 0, 1,
+                                istex(I) ? vk::DescriptorType::eStorageTexelBuffer : vk::DescriptorType::eStorageBuffer,
+                                nullptr, istex(I) ? nullptr : &infos[I], istex(I) ? &infostex[I] : nullptr}...
 			}};
 			return r;
 		}
@@ -133,6 +138,40 @@ namespace vuh {
 
 				return Delayed<Compute>{fence, _device, Compute(_device, buffer)};
 			}
+
+            /// Binds a pipeline and a descriptor set.
+            template<class... Arrs>
+            auto bind_descset(Arrs&... arrs)-> void {
+                constexpr auto N = sizeof...(arrs);
+                auto dscinfos = std::array<vk::DescriptorBufferInfo, N>{
+                                               {{arrs.buffer()
+                                               , arrs.offset_bytes()
+                                               , arrs.size_bytes()}... }
+                                };
+                auto dscinfostex = std::array<vk::BufferView, N>{
+                                               { {[](auto& arr){ if constexpr(std::is_base_of_v<vk::BufferView, std::decay_t<decltype(arr)>>) return arr; else return nullptr; }(arrs)}... }
+                                };
+                auto write_dscsets = dscinfos2writesets(_dscset, dscinfos, dscinfostex
+                                                       , std::make_index_sequence<N>{});
+                _device.updateDescriptorSets(write_dscsets, {}); // associate buffers to binding points in bindLayout
+            }
+
+            /// Allocates new descriptors sets
+            /// Return old one
+            template<class... Arrs>
+            auto realloc_descriptor_sets(Arrs&...)-> vk::DescriptorSet {
+                assert(_dsclayout);
+                auto dsc = _dscset;
+                _dscset = _device.allocateDescriptorSets({_dscpool, 1, &_dsclayout})[0];
+                return dsc;
+            }
+            void free_desc_set(vk::DescriptorSet d)
+            {
+                if (!d)
+                    return;
+
+                _device.freeDescriptorSets(_dscpool, 1, &d);
+            }
 		protected:
 			/// Construct object using given a vuh::Device and path to SPIR-V shader code.
 			ProgramBase(vuh::Device& device        ///< device used to run the code
@@ -228,11 +267,14 @@ namespace vuh {
 			auto alloc_descriptor_sets(Arrs&...)-> void {
 				assert(_dsclayout);
 				auto sbo_descriptors_size = vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer
-				                                                   , sizeof...(Arrs));
-				auto descriptor_sizes = std::array<vk::DescriptorPoolSize, 1>({sbo_descriptors_size}); // can be done compile-time, but not worth it
+                                                                   , 2 * sizeof...(Arrs));
+                auto sbo_descriptors_size2 = vk::DescriptorPoolSize(vk::DescriptorType::eStorageTexelBuffer
+                                                                   , 2 * sizeof...(Arrs));
+                auto descriptor_sizes = std::array<vk::DescriptorPoolSize, 2>({sbo_descriptors_size, sbo_descriptors_size2}); // can be done compile-time, but not worth it
 				_dscpool = _device.createDescriptorPool(
-				                             {vk::DescriptorPoolCreateFlags(), 1 // 1 here is the max number of descriptor sets that can be allocated from the pool
-				                              , uint32_t(descriptor_sizes.size()), descriptor_sizes.data()
+                                             {vk::DescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                              2 // 1 here is the max number of descriptor sets that can be allocated from the pool
+                                              , uint32_t(descriptor_sizes.size()), descriptor_sizes.data()
 				                              });
 				_dscset = _device.allocateDescriptorSets({_dscpool, 1, &_dsclayout})[0];
 			}
@@ -243,15 +285,7 @@ namespace vuh {
 			auto command_buffer_begin(Arrs&... arrs)-> void {
 				assert(_pipeline); /// pipeline supposed to be initialized before this
 
-				constexpr auto N = sizeof...(arrs);
-				auto dscinfos = std::array<vk::DescriptorBufferInfo, N>{
-					                           {{arrs.buffer()
-				                               , arrs.offset()*sizeof(typename Arrs::value_type)
-				                               , arrs.size_bytes()}... }
-				                };
-				auto write_dscsets = dscinfos2writesets(_dscset, dscinfos
-				                                       , std::make_index_sequence<N>{});
-				_device.updateDescriptorSets(write_dscsets, {}); // associate buffers to binding points in bindLayout
+                bind_descset(arrs...);
 
 				// Start recording commands into the newly allocated command buffer.
 				//	auto beginInfo = vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit); // buffer is only submitted and used once
