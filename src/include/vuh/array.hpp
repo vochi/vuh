@@ -44,7 +44,8 @@ namespace mem {
 /// This enables std::vector-like type declarations of Arrays with different allocators.
 /// Althogh in this case resulting classes have different data exchange interfaces,
 /// this may still be useful since they all have similae binding properties to shaders.
-template<class T, class Alloc=arr::AllocDevice<arr::properties::Device>>
-using Array = typename detail::ArrayClass<typename Alloc::properties_t>::template type<T, Alloc>;
+template<class T, class Alloc=arr::AllocDevice<arr::properties::Device>,
+         typename ImplSelector = typename Alloc::properties_t>
+using Array = typename detail::ArrayClass<ImplSelector>::template type<T, Alloc>;
 
 } // namespace vuh
