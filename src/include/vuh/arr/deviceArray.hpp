@@ -23,6 +23,7 @@ template<class T, class Alloc>
 class DeviceOnlyArray: public BasicArray<Alloc> {
 public:
 	using value_type = T;
+    DeviceOnlyArray() { }
    /// Constructs object of the class on given device.
    /// Memory is left unintitialized.
    DeviceOnlyArray( vuh::Device& device  ///< deice to create array on
@@ -51,6 +52,7 @@ class DeviceArray: public BasicArray<Alloc>{
 	using Base = BasicArray<Alloc>;
 public:
 	using value_type = T;
+    DeviceArray() {}
 	/// Create an instance of DeviceArray with given number of elements. Memory is uninitialized.
 	DeviceArray( vuh::Device& device   ///< device to create array on
 	           , size_t n_elements     ///< number of elements
@@ -107,19 +109,30 @@ public:
 	auto fromHost(It1 begin, It2 end)-> void {
 		if(Base::isHostVisible()){
 			std::copy(begin, end, host_data());
-			Base::_dev.unmapMemory(Base::_mem);
+            Base::_dev.get().unmapMemory(Base::_mem);
 		} else { // memory is not host visible, use staging buffer
 			auto stage_buf = HostArray<T, AllocDevice<properties::HostCoherent>>(Base::_dev, begin, end);
 			copyBuf(Base::_dev, stage_buf, *this, size_bytes());
 		}
 	}
+    /// Copy data from host range to array memory.
+    template<class It1, class It2, typename F>
+    auto fromHost(It1 begin, It2 end, F&& fun)-> void {
+        if(Base::isHostVisible()){
+            std::transform(begin, end, host_data(), fun);
+            Base::_dev.get().unmapMemory(Base::_mem);
+        } else { // memory is not host visible, use staging buffer
+            auto stage_buf = HostArray<T, AllocDevice<properties::HostCoherent>>(Base::_dev, begin, end, fun);
+            copyBuf(Base::_dev, stage_buf, *this, size_bytes());
+        }
+    }
    
 	/// Copy data from host range to array memory with offset
 	template<class It1, class It2>
 	auto fromHost(It1 begin, It2 end, size_t offset)-> void {
 		if(Base::isHostVisible()){
 			std::copy(begin, end, host_data() + offset);
-			Base::_dev.unmapMemory(Base::_mem);
+            Base::_dev.get().unmapMemory(Base::_mem);
 		} else { // memory is not host visible, use staging buffer
 			auto stage_buf = HostArray<T, AllocDevice<properties::HostCoherent>>(Base::_dev, begin, end);
 			copyBuf(Base::_dev, stage_buf, *this, size_bytes(), 0u, offset*sizeof(T));
@@ -132,7 +145,7 @@ public:
    auto toHost(It copy_to) const-> void {
       if(Base::isHostVisible()){
          std::copy_n(host_data(), size(), copy_to);
-         Base::_dev.unmapMemory(Base::_mem);
+         Base::_dev.get().unmapMemory(Base::_mem);
       } else {
          using std::begin; using std::end;
          auto stage_buf = HostArray<T, AllocDevice<properties::HostCached>>(Base::_dev, size());
@@ -148,7 +161,7 @@ public:
       if(Base::isHostVisible()){
          auto copy_from = host_data();
          std::transform(copy_from, copy_from + size(), copy_to, std::forward<F>(fun));
-         Base::_dev.unmapMemory(Base::_mem);
+         Base::_dev.get().unmapMemory(Base::_mem);
       } else {
          using std::begin; using std::end;
          auto stage_buf = HostArray<T, AllocDevice<properties::HostCached>>(Base::_dev, size());
@@ -167,7 +180,7 @@ public:
 		if(Base::isHostVisible()){
 			auto copy_from = host_data();
 			std::transform(copy_from, copy_from + size, copy_to, std::forward<F>(fun));
-			Base::_dev.unmapMemory(Base::_mem);
+            Base::_dev.get().unmapMemory(Base::_mem);
 		} else {
 			using std::begin; using std::end;
 			auto stage_buf = HostArray<T, AllocDevice<properties::HostCached>>(Base::_dev, size);
@@ -182,7 +195,7 @@ public:
 		if(Base::isHostVisible()){
 			auto copy_from = host_data();
 			std::copy(copy_from + offset_begin, copy_from + offset_end, dst_begin);
-			Base::_dev.unmapMemory(Base::_mem);
+            Base::_dev.get().unmapMemory(Base::_mem);
 		} else {
 			using std::begin; using std::end;
 			auto stage_buf = HostArray<T, AllocDevice<properties::HostCached>>(Base::_dev
@@ -218,12 +231,12 @@ public:
 private: // helpers
 	auto host_data()-> T* {
 		assert(Base::isHostVisible());
-		return static_cast<T*>(Base::_dev.mapMemory(Base::_mem, 0, size_bytes()));
+        return static_cast<T*>(Base::_dev.get().mapMemory(Base::_mem, 0, size_bytes()));
 	}
 
 	auto host_data() const-> const T* {
 		assert(Base::isHostVisible());
-		return static_cast<const T*>(Base::_dev.mapMemory(Base::_mem, 0, size_bytes()));
+        return static_cast<const T*>(Base::_dev.get().mapMemory(Base::_mem, 0, size_bytes()));
 	}
 private: // data
 	size_t _size; ///< number of elements. Actual allocated memory may be a bit bigger than necessary.

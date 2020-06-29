@@ -19,6 +19,7 @@ class HostArray: public BasicArray<Alloc> {
 	using Base = BasicArray<Alloc>;
 public:
 	using value_type = T;
+    HostArray() : _data(nullptr) {}
 	/// Construct object of the class on given device.
 	/// Memory is not initialized with any data.
 	HostArray(vuh::Device& device  ///< device to create array on
@@ -27,7 +28,7 @@ public:
 	          , vk::BufferUsageFlags flags_buffer={}    ///< additional (to defined by allocator) buffer usage flags
 	          )
 	   : BasicArray<Alloc>(device, n_elements*sizeof(T), flags_memory, flags_buffer)
-	   , _data(static_cast<T*>(Base::_dev.mapMemory(Base::_mem, 0, n_elements*sizeof(T))))
+       , _data(static_cast<T*>(Base::_dev.get().mapMemory(Base::_mem, 0, n_elements*sizeof(T))))
 	   , _size(n_elements)
 	{}
 
@@ -55,6 +56,19 @@ public:
 	{
 		std::copy(begin, end, this->begin());
 	}
+    /// Construct array on given device and initialize it from range of values
+    template<class It1, class It2, typename F>
+    HostArray(vuh::Device& device ///< device to create array on
+             , It1 begin          ///< beginning of initialization range
+             , It2 end            ///< end (one past end) of initialization range
+              , F&& fun
+             , std::enable_if_t<!std::is_same_v<vk::MemoryPropertyFlags, It2> && !std::is_same_v<vk::BufferUsageFlags, F>, vk::MemoryPropertyFlags> flags_memory={} ///< additional (to defined by allocator) memory usage flags
+             , vk::BufferUsageFlags flags_buffer={}    ///< additional (to defined by allocator) buffer usage flags
+             )
+       : HostArray(device, std::distance(begin, end), flags_memory, flags_buffer)
+    {
+        std::transform(begin, end, this->begin(), fun);
+    }
 
    /// Move constructor.
    HostArray(HostArray&& o): Base(std::move(o)), _data(o._data), _size(o._size) {o._data = nullptr;}
@@ -67,7 +81,7 @@ public:
    /// Destroy array, and release all associated resources.
    ~HostArray() noexcept {
       if(_data) {
-         Base::_dev.unmapMemory(Base::_mem);
+         Base::_dev.get().unmapMemory(Base::_mem);
       }
    }
 

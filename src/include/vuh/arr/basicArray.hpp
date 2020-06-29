@@ -18,8 +18,8 @@ template<class Alloc>
 class BasicArray: public vk::Buffer {
 	static constexpr auto descriptor_flags = vk::BufferUsageFlagBits::eStorageBuffer;
 public:
-	static constexpr auto descriptor_class = vk::DescriptorType::eStorageBuffer;
-
+    static constexpr auto descriptor_class = vk::DescriptorType::eStorageBuffer;
+BasicArray() : _dev(*(vuh::Device*)nullptr) { }
 	/// Construct SBO array of given size in device memory
 	BasicArray(vuh::Device& device                     ///< device to allocate array
 	           , size_t size_bytes                     ///< desired size in bytes
@@ -33,7 +33,7 @@ public:
          auto alloc = Alloc();
          _mem = alloc.allocMemory(device, *this, properties);
          _flags = alloc.memoryProperties(device);
-         _dev.bindBufferMemory(*this, _mem, 0);
+         _dev.get().bindBufferMemory(*this, _mem, 0);
       } catch(std::runtime_error&){ // destroy buffer if memory allocation was not successful
          release();
          throw;
@@ -59,6 +59,9 @@ public:
 	/// @return offset of the current buffer from the beginning of associated device memory.
 	/// For arrays managing their own memory this is always 0.
 	auto offset() const-> std::size_t { return 0;}
+    /// @return offset of the current buffer from the beginning of associated device memory.
+    /// For arrays managing their own memory this is always 0.
+    auto offset_bytes() const-> std::size_t { return 0;}
 
 	/// @return reference to device on which underlying buffer is allocated
 	auto device()-> vuh::Device& { return _dev; }
@@ -93,14 +96,14 @@ private: // helpers
 	/// release resources associated with current BasicArray object
 	auto release() noexcept-> void {
 		if(static_cast<vk::Buffer&>(*this)){
-			_dev.freeMemory(_mem);
-			_dev.destroyBuffer(*this);
+            _dev.get().freeMemory(_mem);
+            _dev.get().destroyBuffer(*this);
 		}
 	}
 protected: // data
 	vk::DeviceMemory _mem;           ///< associated chunk of device memory
 	vk::MemoryPropertyFlags _flags;  ///< actual flags of allocated memory (may differ from those requested)
-	vuh::Device& _dev;               ///< referes underlying logical device
+    std::reference_wrapper<vuh::Device> _dev;               ///< referes underlying logical device
 }; // class BasicArray
 } // namespace arr
 } // namespace vuh
