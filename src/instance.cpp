@@ -109,7 +109,7 @@ namespace {
 		auto createFN = PFN_vkCreateDebugReportCallbackEXT(
 		                                  instance.getProcAddr("vkCreateDebugReportCallbackEXT"));
 		if(createFN){
-			createFN(instance, &createInfo, nullptr, &ret);
+			createFN((VkInstance_T *)instance, &createInfo, nullptr, &ret);
 		}
 		return ret;
 	}
@@ -126,7 +126,11 @@ namespace vuh {
 	   : _instance(createInstance(filter_layers(layers), filter_extensions(extension), info))
 	   , _reporter(report_callback ? report_callback : debugReporter)
 	   , _reporter_cbk(registerReporter(_instance, _reporter))
-	{}
+    {
+#if VULKAN_HPP_DISPATCH_LOADER_DYNAMIC == 1
+        vk::defaultDispatchLoaderDynamic.init(_instance);
+#endif
+    }
 
 	/// Clean instance resources.
 	Instance::~Instance() noexcept {
@@ -157,10 +161,10 @@ namespace vuh {
 		if(_instance){
 			if(_reporter_cbk){// unregister callback.
 				auto destroyFn = PFN_vkDestroyDebugReportCallbackEXT(
-				                    vkGetInstanceProcAddr(_instance, "vkDestroyDebugReportCallbackEXT")
+                                    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr((VkInstance_T *)_instance, "vkDestroyDebugReportCallbackEXT")
 				                    );
 				if(destroyFn){
-					destroyFn(_instance, _reporter_cbk, nullptr);
+					destroyFn((VkInstance_T *)_instance, _reporter_cbk, nullptr);
 				}
 			}
 

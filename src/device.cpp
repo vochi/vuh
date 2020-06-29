@@ -88,6 +88,9 @@ namespace vuh {
 	  , _cmp_family_id(computeFamilyId)
 	  , _tfr_family_id(transferFamilyId)
 	{
+#if VULKAN_HPP_DISPATCH_LOADER_DYNAMIC == 1
+        vk::defaultDispatchLoaderDynamic.init(*this);
+#endif
 		try {
 			_cmdpool_compute = createCommandPool({vk::CommandPoolCreateFlagBits::eResetCommandBuffer
 			                                     , computeFamilyId});
@@ -131,8 +134,11 @@ namespace vuh {
 	{}
 
 	/// Copy assignment. Created new handle to the same physical device and recreates associated pools.
-	auto Device::operator=(Device other)-> Device& {
+    auto Device::operator=(Device other)-> Device& {
 		swap(*this, other);
+#if VULKAN_HPP_DISPATCH_LOADER_DYNAMIC == 1
+        vk::defaultDispatchLoaderDynamic.init(*this);
+#endif
 		return *this;
 	}
 
@@ -148,12 +154,18 @@ namespace vuh {
 	   , _cmp_family_id(other._cmp_family_id)
 	   , _tfr_family_id(other._tfr_family_id)
 	{
+#if VULKAN_HPP_DISPATCH_LOADER_DYNAMIC == 1
+        vk::defaultDispatchLoaderDynamic.init(*this);
+#endif
 		static_cast<vk::Device&>(other)= nullptr;
 	}
 
 	/// Move assignment.
 	auto Device::operator=(Device&& o) noexcept-> Device& {
 		swap(*this, o);
+#if VULKAN_HPP_DISPATCH_LOADER_DYNAMIC == 1
+        vk::defaultDispatchLoaderDynamic.init(*this);
+#endif
 		return *this;
 	}
 
