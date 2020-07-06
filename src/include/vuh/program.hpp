@@ -305,8 +305,10 @@ namespace vuh {
 				cmdbuf.dispatch(_batch[0], _batch[1], _batch[2]); // start compute pipeline, execute the shader
 				cmdbuf.end(); // end recording commands
 			}
-		protected: // data
-			vk::ShaderModule _shader;            ///< compute shader to execute
+
+        public:
+            vk::ShaderModule _shader;            ///< compute shader to execute
+        protected: // data
 			vk::DescriptorSetLayout _dsclayout;  ///< descriptor set layout. This defines the kernel's array parameters interface.
 			vk::DescriptorPool _dscpool;         ///< descitptor ses pool. Descriptors are allocated on this pool.
 			vk::DescriptorSet _dscset;           ///< descriptors set
@@ -316,6 +318,9 @@ namespace vuh {
 
 			vuh::Device& _device;                ///< refer to device to run shader on
 			std::array<uint32_t, 3> _batch={0, 0, 0}; ///< 3D evaluation grid dimensions (number of workgroups to run)
+
+        public:
+            const char* entryPoint = "main";
 		}; // class ProgramBase
 
 		/// Part of Program handling specialization constants.
@@ -348,7 +353,7 @@ namespace vuh {
 				// Specify the compute shader stage, and it's entry point (main), and specializations
 				auto stageCI = vk::PipelineShaderStageCreateInfo(vk::PipelineShaderStageCreateFlags()
 																				 , vk::ShaderStageFlagBits::eCompute
-																				 , _shader, "main", &specInfo);
+																				 , _shader, entryPoint, &specInfo);
 				_pipeline = _device.createPipeline(_pipelayout, _pipecache, stageCI);
 			}
 		protected:
@@ -373,7 +378,7 @@ namespace vuh {
 			auto init_pipeline()-> void {
 				auto stageCI = vk::PipelineShaderStageCreateInfo(vk::PipelineShaderStageCreateFlags()
 																				 , vk::ShaderStageFlagBits::eCompute
-																				 , _shader, "main", nullptr);
+																				 , _shader, entryPoint, nullptr);
 
 				_pipeline = _device.createPipeline(_pipelayout, _pipecache, stageCI);
 			}
