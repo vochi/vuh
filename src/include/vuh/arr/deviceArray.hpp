@@ -126,6 +126,17 @@ public:
             copyBuf(Base::_dev, stage_buf, *this, size_bytes());
         }
     }
+    /// Call fun to fill data to array memory.
+    template<typename F>
+    auto fromHost(F&& fun)-> void {
+        if(Base::isHostVisible()){
+            fun(host_data());
+            Base::_dev.get().unmapMemory(Base::_mem);
+        } else { // memory is not host visible, use staging buffer
+            auto stage_buf = HostArray<T, AllocDevice<properties::HostCoherent>>(Base::_dev, size(), fun);
+            copyBuf(Base::_dev, stage_buf, *this, size_bytes());
+        }
+    }
    
 	/// Copy data from host range to array memory with offset
 	template<class It1, class It2>
@@ -141,7 +152,7 @@ public:
 
    /// Copy data from array memory to host location indicated by iterator.
 	/// The whole array data is copied over.
-   template<class It>
+   template<class It, typename=typename std::enable_if_t<vuh::traits::is_host_iterator<It>::value>>
    auto toHost(It copy_to) const-> void {
       if(Base::isHostVisible()){
          std::copy_n(host_data(), size(), copy_to);
@@ -158,16 +169,7 @@ public:
 	/// The whole array data is transformed.
    template<class It, class F>
    auto toHost(It copy_to, F&& fun) const-> void {
-      if(Base::isHostVisible()){
-         auto copy_from = host_data();
-         std::transform(copy_from, copy_from + size(), copy_to, std::forward<F>(fun));
-         Base::_dev.get().unmapMemory(Base::_mem);
-      } else {
-         using std::begin; using std::end;
-         auto stage_buf = HostArray<T, AllocDevice<properties::HostCached>>(Base::_dev, size());
-         copyBuf(Base::_dev, *this, stage_buf, size_bytes());
-         std::transform(begin(stage_buf), end(stage_buf), copy_to, std::forward<F>(fun));
-      }
+      toHost(copy_to, size(), fun);
    }
    
    /// Copy-transform the chunk of data of given size from the beginning of array.
@@ -186,6 +188,22 @@ public:
 			auto stage_buf = HostArray<T, AllocDevice<properties::HostCached>>(Base::_dev, size);
 			copyBuf(Base::_dev, *this, stage_buf, size_bytes());
 			std::transform(begin(stage_buf), end(stage_buf), copy_to, std::forward<F>(fun));
+		}
+	}
+   /// Call back fun on data of array.
+   template<class F, typename=typename std::enable_if_t<std::is_invocable_v<F, float*>> >
+   auto toHost( F&& fun     ///< transform function
+	           ) const-> void
+	{
+		if(Base::isHostVisible()){
+			auto copy_from = host_data();
+            fun(copy_from);
+            Base::_dev.get().unmapMemory(Base::_mem);
+		} else {
+			using std::begin; using std::end;
+			auto stage_buf = HostArray<T, AllocDevice<properties::HostCached>>(Base::_dev, size());
+			copyBuf(Base::_dev, *this, stage_buf, size_bytes());
+            fun(begin(stage_buf));
 		}
 	}
 

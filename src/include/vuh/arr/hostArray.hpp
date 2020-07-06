@@ -56,6 +56,18 @@ public:
 	{
 		std::copy(begin, end, this->begin());
 	}
+    /// Construct array on given device and call fun to fill it
+	template<typename F>
+	HostArray(vuh::Device& device ///< device to create array on
+             , size_t size
+             , F&& fun
+	         , vk::MemoryPropertyFlags flags_memory={} ///< additional (to defined by allocator) memory usage flags
+	         , vk::BufferUsageFlags flags_buffer={}    ///< additional (to defined by allocator) buffer usage flags
+	         )
+	   : HostArray(device, size, flags_memory, flags_buffer)
+	{
+		fun(this->begin());
+	}
     /// Construct array on given device and initialize it from range of values
     template<class It1, class It2, typename F>
     HostArray(vuh::Device& device ///< device to create array on
