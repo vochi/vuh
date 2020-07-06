@@ -5,6 +5,12 @@
 #include <fstream>
 
 namespace vuh {
+inline bool ends_with(std::string const & value, std::string const & ending)
+{
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
 	/// Read binary shader file into array of uint32_t. little endian assumed.
 	/// Padded by 0s to a boundary of 4.
 	auto read_spirv(const char* filename)-> std::vector<char> {
@@ -14,7 +20,22 @@ namespace vuh {
 		}
 		auto ret = std::vector<char>(std::istreambuf_iterator<char>(fin), std::istreambuf_iterator<char>());
 
-		ret.resize(4u*div_up(uint32_t(ret.size()), 4u));
+
+        std::string strname(filename);
+        if (ends_with(strname, ".metal")) {
+            auto size = ret.size();
+            ret.resize(size + 4);
+            std::copy_backward(ret.begin(), ret.begin() + size, ret.begin() + size + 4);
+            *((uint32_t*)ret.data()) = 0x19960412;
+        } else
+        if (ends_with(strname, ".metallib")) {
+            auto size = ret.size();
+            ret.resize(size + 4);
+            std::copy_backward(ret.begin(), ret.begin() + size, ret.begin() + size + 4);
+            *((uint32_t*)ret.data()) = 0x19981215;
+        } else {
+            ret.resize(4u*div_up(uint32_t(ret.size()), 4u));
+        }
 		return ret;
 	}
 
