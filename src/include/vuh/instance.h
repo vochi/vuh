@@ -30,7 +30,7 @@ namespace vuh {
 		Instance(Instance&&) noexcept;
 		auto operator= (Instance&&) noexcept-> Instance&;
 
-		auto devices()-> std::vector<vuh::Device>;
+		auto devices()-> std::vector<vk::PhysicalDevice>;
 		auto report(const char* prefix, const char* message
 		            , VkDebugReportFlagsEXT flags=VK_DEBUG_REPORT_INFORMATION_BIT_EXT) const-> void;
 	private: // helpers

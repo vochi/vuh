@@ -173,11 +173,11 @@ namespace vuh {
 	}
 
 	/// @return vector of available vulkan devices
-	auto Instance::devices()-> std::vector<Device> {
+	auto Instance::devices()-> std::vector<vk::PhysicalDevice> {
 		auto physdevs = _instance.enumeratePhysicalDevices();
-		auto r = std::vector<Device>{};
+		auto r = std::vector<vk::PhysicalDevice>{};
 		for(auto pd: physdevs){
-			r.emplace_back(*this, pd);
+			r.emplace_back(std::move(pd));
 		}
 		return r;
 	}
