@@ -230,7 +230,7 @@ namespace vuh {
 	{
 		auto pipelineCI = vk::ComputePipelineCreateInfo(flags
 																		, shader_stage_info, pipe_layout);
-		return createComputePipeline(pipe_cache, pipelineCI, nullptr).value;
+		return (vk::Pipeline&&)createComputePipeline(pipe_cache, pipelineCI, nullptr);
 		
 	}
 
