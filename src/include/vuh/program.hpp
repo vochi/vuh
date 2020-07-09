@@ -192,6 +192,17 @@ namespace vuh {
 				                                    , reinterpret_cast<const uint32_t*>(code.data())
 				                                    });
 			}
+			/// Construct object using given a vuh::Device a SPIR-V shader code.
+			ProgramBase(vuh::Device& device              ///< device used to run the code
+			            , const uint32_t* code, size_t size  ///< actual binary SPIR-V shader code
+			            , vk::ShaderModuleCreateFlags flags={}
+			            )
+			   : _device(device)
+			{
+				_shader = device.createShaderModule({ flags, size
+				                                    , code
+				                                    });
+			}
 
 			/// Destroy the object and release associated resources.
 			~ProgramBase() noexcept {
@@ -339,8 +350,8 @@ namespace vuh {
 			{}
 
 			/// Construct object using given a vuh::Device a SPIR-V shader code.
-			SpecsBase(Device& device, const std::vector<char>& code, vk::ShaderModuleCreateFlags f={})
-			   : ProgramBase(device, code, f)
+			SpecsBase(Device& device, const uint32_t* code, size_t size, vk::ShaderModuleCreateFlags f={})
+			   : ProgramBase(device, code, size, f)
 			{}
 
 			/// Initialize the pipeline.
@@ -370,8 +381,8 @@ namespace vuh {
 			{}
 
 			/// Construct object using given a vuh::Device a SPIR-V shader code.
-			SpecsBase(Device& device, const std::vector<char>& code, vk::ShaderModuleCreateFlags f={})
-			   : ProgramBase(device, code, f)
+			SpecsBase(Device& device, const uint32_t* code, size_t size, vk::ShaderModuleCreateFlags f={})
+			   : ProgramBase(device, code, size, f)
 			{}
 
 			/// Initialize the pipeline with empty specialialization constants interface.
@@ -401,14 +412,14 @@ namespace vuh {
 	public:
 		/// Initialize program on a device using SPIR-V code at a given path
 		Program(vuh::Device& device, const char* filepath, vk::ShaderModuleCreateFlags flags={})
-		   : Base(device, read_spirv(filepath), flags)
+		   : Base(device, filepath, flags)
 		{}
 
 		/// Initialize program on a device from binary SPIR-V code
-		Program(vuh::Device& device, const std::vector<char>& code
+		Program(vuh::Device& device, const uint32_t* code, size_t size
 		        , vk::ShaderModuleCreateFlags flags={}
 		        )
-		   : Base(device, code, flags)
+		   : Base(device, code, size, flags)
 		{}
 
 		using Base::run;
@@ -499,10 +510,10 @@ namespace vuh {
 		{}
 
 		/// Initialize program on a device from binary SPIR-V code
-		Program(vuh::Device& device, const std::vector<char>& code
+		Program(vuh::Device& device, const uint32_t* code, size_t size
 		        , vk::ShaderModuleCreateFlags flags={}
 		        )
-		   : Base (device, code, flags)
+		   : Base (device, code, size, flags)
 		{}
 
 		using Base::run;
