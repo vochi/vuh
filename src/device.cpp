@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <limits>
+#include <iostream>
 
 namespace {
 	/// Create logical device.
@@ -10,8 +11,18 @@ namespace {
 	auto createDevice(const vk::PhysicalDevice& physicalDevice ///< physical device to wrap
 	                  , uint32_t compute_family_id             ///< index of queue family supporting compute operations
 	                  , uint32_t transfer_family_id            ///< index of queue family supporting transfer operations
-	                  )-> vk::Device
+	                  , vk::PhysicalDeviceFeatures *fe = nullptr)-> vk::Device
 	{
+        auto minus1 = uint32_t(-1);
+        if (compute_family_id == minus1) {
+            compute_family_id = 0;
+            std::cerr << "[ERROR] VK device no compute q found! Fall back to q0. \n";
+        }
+        if (transfer_family_id == minus1) {
+            transfer_family_id = compute_family_id;
+            std::cerr << "[ERROR] VK device no transfer q found! Fall back to compute. \n";
+        }
+
 		// When creating the device specify what queues it has
 		auto p = float(1.0); // queue priority
 		auto queueCIs = std::array<vk::DeviceQueueCreateInfo, 2>{};
@@ -24,6 +35,12 @@ namespace {
 			n_queues += 1;
 		}
 		auto devCI = vk::DeviceCreateInfo(vk::DeviceCreateFlags(), n_queues, queueCIs.data());
+
+        devCI.pEnabledFeatures = fe;
+//        if (!fe && VK_VERSION_MINOR(physicalDevice.getProperties().apiVersion) >= 1) {
+//            auto f = physicalDevice.getFeatures2();
+//            devCI.pNext = &f;
+//        }
 
 		return physicalDevice.createDevice(devCI, nullptr);
 	}
