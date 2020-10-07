@@ -14,6 +14,10 @@ namespace arr {
 /// for host access.
 /// Provides Forward iterator + random-access interface.
 /// Memory remains mapped during the whole lifetime of an object of this type.
+///
+/// !!!!!
+/// Flush/invalidate is a user responsibility!!!
+/// !!!!!
 template<class T, class Alloc>
 class HostArray: public BasicArray<Alloc> {
 	using Base = BasicArray<Alloc>;
@@ -104,6 +108,7 @@ public:
       swap(_data, o._data);
       swap(_size, o._size);
 	}
+
    
    /// Host-accesible iterator to beginning of array data
 	auto begin()-> value_type* { return _data; }
@@ -136,7 +141,7 @@ public:
    
    /// @return size of a memory chunk occupied by array elements
    /// (not the size of actually allocated chunk, which may be a bit bigger).
-   auto size_bytes() const-> uint32_t {return _size*sizeof(T);}
+   auto size_bytes() const-> size_t {return _size*sizeof(T);}
 private: // data
    T* _data;       ///< host accessible pointer to the beginning of corresponding memory chunk.
    size_t _size;  ///< Number of elements. Actual allocated memory may be a bit bigger then necessary.

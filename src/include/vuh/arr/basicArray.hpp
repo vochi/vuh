@@ -19,7 +19,9 @@ class BasicArray: public vk::Buffer {
 	static constexpr auto descriptor_flags = vk::BufferUsageFlagBits::eStorageBuffer;
 public:
     static constexpr auto descriptor_class = vk::DescriptorType::eStorageBuffer;
-BasicArray() : _dev(*(vuh::Device*)nullptr) { }
+
+    static constexpr vuh::Device* __nulldevice = nullptr;
+BasicArray() : _dev(*__nulldevice) { }
 	/// Construct SBO array of given size in device memory
 	BasicArray(vuh::Device& device                     ///< device to allocate array
 	           , size_t size_bytes                     ///< desired size in bytes
@@ -70,6 +72,25 @@ BasicArray() : _dev(*(vuh::Device*)nullptr) { }
 	auto isHostVisible() const-> bool {
 		return bool(_flags & vk::MemoryPropertyFlagBits::eHostVisible);
 	}
+
+    auto isHostCoherent() const-> bool {
+		return bool(_flags & vk::MemoryPropertyFlagBits::eHostCoherent);
+	}
+
+    void flush_mapped_writes() {
+		assert(isHostVisible());
+        if (!isHostCoherent()) {
+            vk::MappedMemoryRange memr(_mem, 0, VK_WHOLE_SIZE);
+            _dev.get().invalidateMappedMemoryRanges(1, &memr);
+        }
+	}
+    void invalidate_mapped_cache() const
+    {
+        if (!isHostCoherent()) {
+            vk::MappedMemoryRange memr(_mem, 0, VK_WHOLE_SIZE);
+            _dev.get().flushMappedMemoryRanges(1, &memr);
+        }
+    }
 
 	/// Move assignment. 
 	/// Resources associated with current array are released immidiately (and not when moved from
