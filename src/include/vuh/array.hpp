@@ -38,6 +38,7 @@ namespace mem {
 	using Host = arr::AllocDevice<arr::properties::Host>;
 	using HostCached = arr::AllocDevice<arr::properties::HostCached>;
 	using HostCoherent = arr::AllocDevice<arr::properties::HostCoherent>;
+    using HostCachedCoherent = arr::AllocDevice<arr::properties::HostCachedCoherent>;
 } // namespace mem
 
 /// Maps Array classes with different data exchange interfaces, to a single templated type.

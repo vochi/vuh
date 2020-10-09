@@ -38,6 +38,15 @@ namespace properties {
 	   static constexpr bufflags_t buffer = bufflags_t(vk::BufferUsageFlagBits::eTransferDst);
 	};
 
+    /// Flags for buffer used as a staging buffer to transfer data from GPU.
+	struct HostCachedCoherent {
+	   using fallback_t = HostCoherent;
+	   static constexpr memflags_t memory = memflags_t(vk::MemoryPropertyFlagBits::eHostVisible)
+	                                      | memflags_t(vk::MemoryPropertyFlagBits::eHostCached )
+                                          | memflags_t(vk::MemoryPropertyFlagBits::eHostCoherent);
+	   static constexpr bufflags_t buffer = bufflags_t(vk::BufferUsageFlagBits::eTransferDst);
+	};
+
 	/// Flags for buffer in both device-local and host-visible memory if such exists.
 	/// There is no fall-back for this.
 	struct Unified {
