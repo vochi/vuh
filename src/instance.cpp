@@ -39,10 +39,12 @@ namespace {
 			if(contains(l, ref_values, ffield)){
 				old_values.push_back(l);
 			} else {
+                auto msg = std::string("value ") + l + " is missing";
 				if(report_cbk != nullptr){
-					auto msg = std::string("value ") + l + " is missing";
 					report_cbk({}, {}, 0, 0, 0, layer_msg, msg.c_str(), nullptr);
-				}
+				} else {
+                    std::cout << msg << std::endl;
+                }
 			}
 		}
 		return old_values;
@@ -116,6 +118,24 @@ namespace {
 } // namespace
 
 namespace vuh {
+
+    uint32_t Instance::getInstanceVersion()
+    {
+        auto verFn = (PFN_vkEnumerateInstanceVersion)
+                VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion");
+        if (!verFn)
+            return VK_API_VERSION_1_0;
+
+        uint32_t ver = 0;
+        auto res = verFn(&ver);
+        if (res != VK_SUCCESS)
+            return 0;
+
+        ver = std::min(ver, VK_HEADER_VERSION_COMPLETE);
+        return ver;
+    }
+
+
 	/// Creates Instance object.
 	/// In debug build in addition to user-defined layers attempts to load validation layers.
 	Instance::Instance(const std::vector<const char*>& layers
@@ -158,12 +178,11 @@ namespace vuh {
 	/// Destroy underlying vulkan instance.
 	/// All resources associated with it, should be released before that.
 	auto Instance::clear() noexcept-> void {
-		if(_instance){
-			if(_reporter_cbk){// unregister callback.
-				auto destroyFn = PFN_vkDestroyDebugReportCallbackEXT(
-                                    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr((VkInstance_T *)_instance, "vkDestroyDebugReportCallbackEXT")
-				                    );
-				if(destroyFn){
+		if (_instance) {
+			if (_reporter_cbk) {// unregister callback.
+                auto destroyFn = (PFN_vkDestroyDebugReportCallbackEXT)
+                        VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr((VkInstance_T *)_instance, "vkDestroyDebugReportCallbackEXT");
+				if (destroyFn){
 					destroyFn((VkInstance_T *)_instance, _reporter_cbk, nullptr);
 				}
 			}

@@ -33,6 +33,9 @@ namespace vuh {
 		auto devices()-> std::vector<vk::PhysicalDevice>;
 		auto report(const char* prefix, const char* message
 		            , VkDebugReportFlagsEXT flags=VK_DEBUG_REPORT_INFORMATION_BIT_EXT) const-> void;
+
+        static uint32_t getInstanceVersion();
+
 	private: // helpers
 		auto clear() noexcept-> void;
 	public: // data
