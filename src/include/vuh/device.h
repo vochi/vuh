@@ -17,7 +17,9 @@ namespace vuh {
 	/// different threads.
 	class Device: public vk::Device {
 	public:
-		explicit Device(vuh::Instance& instance, vk::PhysicalDevice physdevice);
+		explicit Device(vuh::Instance& instance, vk::PhysicalDevice physdevice
+                        , const std::vector<const char*> &layers = {}
+                        , const std::vector<const char*> &extensions = {});
 		~Device() noexcept;
 
 		Device(const Device&);
@@ -49,12 +51,20 @@ namespace vuh {
 		auto instance()-> vuh::Instance& { return _instance; }
         auto phys()-> vk::PhysicalDevice& { return _physdev; }
 		auto releaseComputeCmdBuffer()-> vk::CommandBuffer;
+
+        void resetComputeCmdBuffer();
+        //compute, else transfer
+        void freeCmdBuffer(vk::CommandBuffer buf, bool transfer = false);
 		
 	private: // helpers
 		explicit Device(vuh::Instance& instance, vk::PhysicalDevice physdevice
-		                , const std::vector<vk::QueueFamilyProperties>& families);
+		                , const std::vector<vk::QueueFamilyProperties>& families
+                        , const std::vector<const char*> &layers
+                        , const std::vector<const char*> &extensions);
 		explicit Device(vuh::Instance& instance, vk::PhysicalDevice physdevice
-	                   , uint32_t computeFamilyId, uint32_t transferFamilyId);
+	                    , uint32_t computeFamilyId, uint32_t transferFamilyId
+                        , const std::vector<const char *> &layers
+                        , const std::vector<const char *> &extensions);
 		auto release() noexcept-> void;
 	private: // data
 		vuh::Instance&     _instance;           ///< refer to Instance object used to create device

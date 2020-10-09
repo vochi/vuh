@@ -6,12 +6,66 @@
 #include <iostream>
 
 namespace {
+
+    /// @return true if value x can be extracted from an array with a given function
+    template<class U, class F>
+    auto contains(const char* x, const std::vector<U>& array, F&& fun)-> bool {
+        return end(array) != std::find_if(array.begin(), array.end(), [&](auto& r){return 0 == std::strcmp(x, fun(r));});
+    }
+
+    /// Extend vector of string literals by candidate values that have a macth in a reference set.
+	template<class U, class T, class F>
+	auto filter_list(std::vector<const char*> old_values ///< array to extend
+	                 , const U& tst_values               ///< candidate values
+	                 , const T& ref_values               ///< reference values
+	                 , F&& ffield                        ///< maps reference values to candidate values manifold
+//	                 , vuh::debug_reporter_t report_cbk=nullptr ///< error reporter
+//	                 , const char* layer_msg=nullptr     ///< base part of the log message about unsuccessful candidate value
+	                 )-> std::vector<const char*>
+	{
+		using std::begin;
+		for(const auto& l: tst_values){
+			if(contains(l, ref_values, ffield)){
+				old_values.push_back(l);
+			} else {
+                auto msg = std::string("value ") + l + " is missing";
+//				if(report_cbk != nullptr){
+//					report_cbk({}, {}, 0, 0, 0, layer_msg, msg.c_str(), nullptr);
+{ //				} else {
+                    std::cout << msg << std::endl;
+                }
+			}
+		}
+		return old_values;
+	}
+
+    /// Filter requested layers, throw away those not present on particular instance.
+    /// Add default validation layers to debug build.
+    auto filter_layers(const vk::PhysicalDevice& physicalDevice, const std::vector<const char*>& layers) {
+        const auto avail_layers = physicalDevice.enumerateDeviceLayerProperties();
+        auto r = filter_list({}, layers, avail_layers
+                             , [](const auto& l){return l.layerName;});
+        return r;
+    }
+
+    /// Filter requested extensions, throw away those not present on particular instance.
+    /// Add default debug extensions to debug build.
+    auto filter_extensions(const vk::PhysicalDevice& physicalDevice, const std::vector<const char*>& extensions) {
+        const auto avail_extensions = physicalDevice.enumerateDeviceExtensionProperties();
+        auto r = filter_list({}, extensions, avail_extensions
+                             , [](const auto& l){return l.extensionName;});
+        return r;
+    }
+
 	/// Create logical device.
 	/// Compute and transport queue family id may point to the same queue.
-	auto createDevice(const vk::PhysicalDevice& physicalDevice ///< physical device to wrap
+	auto createDevice(vuh::Instance& instance,
+                      const vk::PhysicalDevice& physicalDevice ///< physical device to wrap
 	                  , uint32_t compute_family_id             ///< index of queue family supporting compute operations
 	                  , uint32_t transfer_family_id            ///< index of queue family supporting transfer operations
-	                  , vk::PhysicalDeviceFeatures *fe = nullptr)-> vk::Device
+	                  , const std::vector<const char*> &layers
+                      , const std::vector<const char*> &extensions
+                      , vk::PhysicalDeviceFeatures *fe = nullptr)-> vk::Device
 	{
         auto minus1 = uint32_t(-1);
         if (compute_family_id == minus1) {
@@ -34,13 +88,22 @@ namespace {
 			                                        , transfer_family_id, 1, &p);
 			n_queues += 1;
 		}
-		auto devCI = vk::DeviceCreateInfo(vk::DeviceCreateFlags(), n_queues, queueCIs.data());
+		auto devCI = vk::DeviceCreateInfo(vk::DeviceCreateFlags(), n_queues, queueCIs.data(),
+                                          layers.size(), layers.data(), extensions.size(), extensions.data());
 
         devCI.pEnabledFeatures = fe;
-//        if (!fe && VK_VERSION_MINOR(physicalDevice.getProperties().apiVersion) >= 1) {
-//            auto f = physicalDevice.getFeatures2();
-//            devCI.pNext = &f;
-//        }
+        vk::PhysicalDeviceFeatures2 f;
+        if (!fe) {
+            auto verFn = (PFN_vkGetPhysicalDeviceFeatures2)
+                    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr((VkInstance&)instance, "vkGetPhysicalDeviceFeatures2");
+            if (!verFn)
+                verFn = (PFN_vkGetPhysicalDeviceFeatures2)
+                        VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr((VkInstance&)instance, "vkGetPhysicalDeviceFeatures2KHR");
+            if (verFn) {
+                verFn((VkPhysicalDevice&)physicalDevice, &(VkPhysicalDeviceFeatures2&)f);
+                devCI.pNext = &f;
+            }
+        }
 
 		return physicalDevice.createDevice(devCI, nullptr);
 	}
@@ -83,23 +146,28 @@ namespace {
 
 namespace vuh {
 	/// Constructs logical device wrapping the physical device of the given instance.
-	Device::Device(Instance& instance, vk::PhysicalDevice physical_device)
-	   : Device(instance, physical_device, physical_device.getQueueFamilyProperties())
+	Device::Device(Instance& instance, vk::PhysicalDevice physical_device
+                   , const std::vector<const char *> &layers, const std::vector<const char *> &extensions)
+	   : Device(instance, physical_device, physical_device.getQueueFamilyProperties(), layers, extensions)
 	{}
 
 	/// Helper constructor.
 	Device::Device(Instance& instance, vk::PhysicalDevice physdevice
 	              , const std::vector<vk::QueueFamilyProperties>& familyProperties
+                   , const std::vector<const char*> &layers
+                   , const std::vector<const char*> &extensions
 	              )
 	   : Device(instance, physdevice, getFamilyID(familyProperties, vk::QueueFlagBits::eCompute)
-	            , getFamilyID(familyProperties, vk::QueueFlagBits::eTransfer))
+                , getFamilyID(familyProperties, vk::QueueFlagBits::eTransfer), layers, extensions)
 	{}
 
 	/// Helper constructor
 	Device::Device(Instance& instance, vk::PhysicalDevice physdevice
 	               , uint32_t computeFamilyId, uint32_t transferFamilyId
-	               )
-	  : vk::Device(createDevice(physdevice, computeFamilyId, transferFamilyId))
+                   , const std::vector<const char*> &layers
+                   , const std::vector<const char*> &extensions)
+        : vk::Device(createDevice(instance, physdevice, computeFamilyId, transferFamilyId,
+                                  filter_layers(physdevice, layers), filter_extensions(physdevice, extensions)))
 	  , _instance(instance)
 	  , _physdev(physdevice)
 	  , _cmp_family_id(computeFamilyId)
@@ -146,9 +214,10 @@ namespace vuh {
 	}
 
 	/// Copy constructor. Creates new handle to the same physical device, and recreates associated pools
-	Device::Device(const Device& other)
-	   : Device(other._instance, other._physdev, other._cmp_family_id, other._tfr_family_id)
-	{}
+	/// !!Ignores layers and extensions!!
+//	Device::Device(const Device& other)
+//        : Device(other._instance, other._physdev, other._cmp_family_id, other._tfr_family_id, {}, {})
+//	{}
 
 	/// Copy assignment. Created new handle to the same physical device and recreates associated pools.
     auto Device::operator=(Device other)-> Device& {
@@ -261,6 +330,18 @@ namespace vuh {
 		}
 		return new_buffer;
 	}
+
+    void Device::resetComputeCmdBuffer()
+    {
+        _cmdbuf_compute.reset({});
+        //freeCmdBuffer(releaseComputeCmdBuffer());
+    }
+
+    void Device::freeCmdBuffer(vk::CommandBuffer buf, bool transfer)
+    {
+        auto pool = transfer ? _cmdpool_transfer : _cmdpool_compute;
+        freeCommandBuffers(pool, 1, &buf);
+    }
 
 	/// @return i-th queue in the family supporting transfer commands.
 	auto Device::transferQueue(uint32_t i)-> vk::Queue {
