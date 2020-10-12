@@ -21,6 +21,7 @@ namespace arr {
 /// memory and anderlying vulkan buffer with suitable flags.
 template<class T, class Alloc>
 class DeviceOnlyArray: public BasicArray<Alloc> {
+    using Base = BasicArray<Alloc>;
 public:
 	using value_type = T;
     DeviceOnlyArray() { }
@@ -34,8 +35,8 @@ public:
 	   , _size(n_elements)
 	{}
 
-	/// @return size of array in bytes.
-	auto size_bytes() const-> uint32_t { return _size*sizeof(T); }
+   using Base::size_bytes;
+
 private:
 	uint32_t  _size; ///< number of elements
 }; // class DeviceOnlyArray
@@ -107,7 +108,7 @@ public:
     /// Destroy array, and release all associated resources.
     ~DeviceArray() noexcept {
        if(ptr) {
-          Base::_dev.get().unmapMemory(Base::_mem);
+          Base::unmapMemory();
        }
     }
 
@@ -281,10 +282,7 @@ public:
 
 	/// @return number of elements
 	auto size() const-> size_t {return _size;}
-
-	/// @return size of a memory chunk occupied by array elements
-	/// (not the size of actually allocated chunk, which may be a bit bigger).
-	auto size_bytes() const-> size_t {return _size*sizeof(T);}
+    using Base::size_bytes;
 
 	/// doc me
 	auto device_begin()-> ArrayIter<DeviceArray> { return ArrayIter<DeviceArray>(*this, 0); }
@@ -297,7 +295,7 @@ private: // helpers
 	auto host_data()-> T* {
 		assert(Base::isHostVisible());
         if (!ptr) {
-            ptr = static_cast<T*>(Base::_dev.get().mapMemory(Base::_mem, 0, size_bytes()));
+            ptr = Base::template mapMemory<T>();
             Base::invalidate_mapped_cache();
         }
         return ptr;
@@ -306,7 +304,7 @@ private: // helpers
 	auto host_data() const-> const T* {
 		assert(Base::isHostVisible());
         if (!ptr) {
-            ptr = static_cast<T*>(Base::_dev.get().mapMemory(Base::_mem, 0, size_bytes()));
+            ptr = Base::template mapMemory<T>();
             Base::invalidate_mapped_cache();
         }
         return ptr;
@@ -314,6 +312,10 @@ private: // helpers
 
     void unmap_host_data() const
     {
+        if (Base::require_unmap_flush) {
+            Base::unmapMemory();
+            ptr = nullptr;
+        }
     }
 private: // data
 	size_t _size; ///< number of elements. Actual allocated memory may be a bit bigger than necessary.

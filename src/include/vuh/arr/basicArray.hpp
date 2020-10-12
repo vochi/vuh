@@ -29,6 +29,7 @@ BasicArray() : _dev(*__nulldevice) { }
 	           , vk::BufferUsageFlags usage={}         ///< additional usage flagsws. These are 'added' to flags defined by allocator.
 	           )
 	   : vk::Buffer(Alloc::makeBuffer(device, size_bytes, descriptor_flags | usage))
+       , _size_bytes(size_bytes)
 	   , _dev(device)
    {
       try{
@@ -50,7 +51,7 @@ BasicArray() : _dev(*__nulldevice) { }
 
 	/// Move constructor. Passes the underlying buffer ownership.
 	BasicArray(BasicArray&& other) noexcept
-	   : vk::Buffer(other), _mem(other._mem), _flags(other._flags), _dev(other._dev)
+	   : vk::Buffer(other), _size_bytes(other._size_bytes), _mem(other._mem), _flags(other._flags), _dev(other._dev)
 	{
 		static_cast<vk::Buffer&>(other) = nullptr;
 	}
@@ -64,6 +65,8 @@ BasicArray() : _dev(*__nulldevice) { }
     /// @return offset of the current buffer from the beginning of associated device memory.
     /// For arrays managing their own memory this is always 0.
     auto offset_bytes() const-> std::size_t { return 0;}
+
+    auto size_bytes() const-> std::size_t { return _size_bytes;}
 
 	/// @return reference to device on which underlying buffer is allocated
 	auto device()-> vuh::Device& { return _dev; }
@@ -91,12 +94,23 @@ BasicArray() : _dev(*__nulldevice) { }
             _dev.get().flushMappedMemoryRanges(1, &memr);
         }
     }
+    template<typename T>
+    T* mapMemory() const
+    {
+        assert(isHostVisible());
+        return static_cast<T*>(_dev.get().mapMemory(_mem, 0, size_bytes()));
+    }
+    void unmapMemory() const
+    {
+        _dev.get().unmapMemory(_mem);
+    }
 
 	/// Move assignment. 
 	/// Resources associated with current array are released immidiately (and not when moved from
 	/// object goes out of scope).
 	auto operator= (BasicArray&& other) noexcept-> BasicArray& {
 		release();
+        _size_bytes = other._size_bytes;
 		_mem = other._mem;
 		_flags = other._flags;
 		_dev = other._dev;
@@ -109,10 +123,12 @@ BasicArray() : _dev(*__nulldevice) { }
 	auto swap(BasicArray& other) noexcept-> void {
 		using std::swap;
 		swap(static_cast<vk::Buffer&>(&this), static_cast<vk::Buffer&>(other));
+        swap(_size_bytes, other._size_bytes);
 		swap(_mem, other._mem);
 		swap(_flags, other._flags);
 		swap(_dev, other._dev);
 	}
+
 private: // helpers
 	/// release resources associated with current BasicArray object
 	auto release() noexcept-> void {
@@ -122,9 +138,11 @@ private: // helpers
 		}
 	}
 protected: // data
+    size_t _size_bytes = 0;
 	vk::DeviceMemory _mem;           ///< associated chunk of device memory
 	vk::MemoryPropertyFlags _flags;  ///< actual flags of allocated memory (may differ from those requested)
     std::reference_wrapper<vuh::Device> _dev;               ///< referes underlying logical device
+    bool require_unmap_flush = false;
 }; // class BasicArray
 } // namespace arr
 } // namespace vuh

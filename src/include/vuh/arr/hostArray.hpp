@@ -32,7 +32,7 @@ public:
 	          , vk::BufferUsageFlags flags_buffer={}    ///< additional (to defined by allocator) buffer usage flags
 	          )
 	   : BasicArray<Alloc>(device, n_elements*sizeof(T), flags_memory, flags_buffer)
-       , _data(static_cast<T*>(Base::_dev.get().mapMemory(Base::_mem, 0, n_elements*sizeof(T))))
+       , _data(Base::template mapMemory<T>())
 	   , _size(n_elements)
 	{}
 
@@ -46,6 +46,7 @@ public:
 	   : HostArray(device, n_elements, flags_memory, flags_buffer)
 	{
 		std::fill_n(begin(), n_elements, value);
+        unmap_host_data();
 	}
 
 	/// Construct array on given device and initialize it from range of values
@@ -59,6 +60,7 @@ public:
 	   : HostArray(device, std::distance(begin, end), flags_memory, flags_buffer)
 	{
 		std::copy(begin, end, this->begin());
+        unmap_host_data();
 	}
     /// Construct array on given device and call fun to fill it
 	template<typename F>
@@ -71,6 +73,7 @@ public:
 	   : HostArray(device, size, flags_memory, flags_buffer)
 	{
 		fun(this->begin());
+        unmap_host_data();
 	}
     /// Construct array on given device and initialize it from range of values
     template<class It1, class It2, typename F>
@@ -84,6 +87,7 @@ public:
        : HostArray(device, std::distance(begin, end), flags_memory, flags_buffer)
     {
         std::transform(begin, end, this->begin(), fun);
+        unmap_host_data();
     }
 
    /// Move constructor.
@@ -97,7 +101,7 @@ public:
    /// Destroy array, and release all associated resources.
    ~HostArray() noexcept {
       if(_data) {
-         Base::_dev.get().unmapMemory(Base::_mem);
+         Base::unmapMemory();
       }
    }
 
@@ -111,12 +115,12 @@ public:
 
    
    /// Host-accesible iterator to beginning of array data
-	auto begin()-> value_type* { return _data; }
-	auto begin() const-> const value_type* { return _data; }
+	auto begin()-> value_type* { return host_data(); }
+	auto begin() const-> const value_type* { return host_data(); }
    
 	/// Pointer (host) to beginning of array data
-	auto data()-> T* {return _data;}
-	auto data() const-> const T* {return _data;}
+	auto data()-> T* {return host_data();}
+	auto data() const-> const T* {return host_data();}
 
    /// Host-accessible iterator to the end (one past the last element) of array data.
 	auto end()-> value_type* { return begin() + size(); }
@@ -138,12 +142,38 @@ public:
    
    /// @return number of elements
    auto size() const-> size_t {return _size;}
-   
-   /// @return size of a memory chunk occupied by array elements
-   /// (not the size of actually allocated chunk, which may be a bit bigger).
-   auto size_bytes() const-> size_t {return _size*sizeof(T);}
+
+   using Base::size_bytes;
+
+   void unmap_host_data() const
+   {
+       if (Base::require_unmap_flush) {
+           Base::unmapMemory();
+           _data = nullptr;
+       }
+   }
+
+private:
+   auto host_data()-> T* {
+       assert(Base::isHostVisible());
+       if (!_data) {
+           _data = Base::template mapMemory<T>();
+           Base::invalidate_mapped_cache();
+       }
+       return _data;
+   }
+
+   auto host_data() const-> const T* {
+       assert(Base::isHostVisible());
+       if (!_data) {
+           _data = Base::template mapMemory<T>();
+           Base::invalidate_mapped_cache();
+       }
+       return _data;
+   }
+
 private: // data
-   T* _data;       ///< host accessible pointer to the beginning of corresponding memory chunk.
+   mutable T* _data;       ///< host accessible pointer to the beginning of corresponding memory chunk.
    size_t _size;  ///< Number of elements. Actual allocated memory may be a bit bigger then necessary.
 }; // class HostArray
 } // namespace arr
