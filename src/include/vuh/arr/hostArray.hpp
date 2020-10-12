@@ -46,6 +46,7 @@ public:
 	   : HostArray(device, n_elements, flags_memory, flags_buffer)
 	{
 		std::fill_n(begin(), n_elements, value);
+        Base::flush_mapped_writes();
         unmap_host_data();
 	}
 
@@ -60,6 +61,7 @@ public:
 	   : HostArray(device, std::distance(begin, end), flags_memory, flags_buffer)
 	{
 		std::copy(begin, end, this->begin());
+        Base::flush_mapped_writes();
         unmap_host_data();
 	}
     /// Construct array on given device and call fun to fill it
@@ -73,6 +75,7 @@ public:
 	   : HostArray(device, size, flags_memory, flags_buffer)
 	{
 		fun(this->begin());
+        Base::flush_mapped_writes();
         unmap_host_data();
 	}
     /// Construct array on given device and initialize it from range of values
@@ -87,6 +90,7 @@ public:
        : HostArray(device, std::distance(begin, end), flags_memory, flags_buffer)
     {
         std::transform(begin, end, this->begin(), fun);
+        Base::flush_mapped_writes();
         unmap_host_data();
     }
 
