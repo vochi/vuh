@@ -44,15 +44,23 @@ namespace properties {
 	   static constexpr memflags_t memory = memflags_t(vk::MemoryPropertyFlagBits::eHostVisible)
 	                                      | memflags_t(vk::MemoryPropertyFlagBits::eHostCached )
                                           | memflags_t(vk::MemoryPropertyFlagBits::eHostCoherent);
-	   static constexpr bufflags_t buffer = bufflags_t(vk::BufferUsageFlagBits::eTransferDst);
+       static constexpr bufflags_t buffer = {};
 	};
 
 	/// Flags for buffer in both device-local and host-visible memory if such exists.
-	/// There is no fall-back for this.
 	struct Unified {
-	  using fallback_t = void;
+	  using fallback_t = Host;
 	  static constexpr memflags_t memory = memflags_t(vk::MemoryPropertyFlagBits::eDeviceLocal)
 	                                     | memflags_t(vk::MemoryPropertyFlagBits::eHostVisible);
+	  static constexpr bufflags_t buffer = {};
+	};
+
+    /// Flags for buffer in both device-local and host-visible memory if such exists.
+	struct UnifiedCoherent {
+	  using fallback_t = HostCoherent;
+	  static constexpr memflags_t memory = memflags_t(vk::MemoryPropertyFlagBits::eDeviceLocal)
+	                                     | memflags_t(vk::MemoryPropertyFlagBits::eHostVisible)
+                                         | memflags_t(vk::MemoryPropertyFlagBits::eHostCoherent);
 	  static constexpr bufflags_t buffer = {};
 	};
 

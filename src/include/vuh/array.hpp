@@ -35,6 +35,7 @@ namespace mem {
 	using DeviceOnly = arr::AllocDevice<arr::properties::DeviceOnly>;
 	using Device = arr::AllocDevice<arr::properties::Device>;
 	using Unified = arr::AllocDevice<arr::properties::Unified>;
+    using UnifiedCoherent = arr::AllocDevice<arr::properties::UnifiedCoherent>;
 	using Host = arr::AllocDevice<arr::properties::Host>;
 	using HostCached = arr::AllocDevice<arr::properties::HostCached>;
 	using HostCoherent = arr::AllocDevice<arr::properties::HostCoherent>;
