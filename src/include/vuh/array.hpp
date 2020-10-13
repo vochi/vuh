@@ -11,10 +11,10 @@ namespace vuh {
 namespace detail {
 
 /// Traits to associate array properties to underlying Array classes (HostArray, DeviceArray).
-/// Default mapping is ArrayClass<T> -> arr::HostArray.
+/// Default mapping is ArrayClass<T> -> arr::DeviceArray.
 template<class Props>
 struct ArrayClass {
-	template<class T, class Alloc> using type = arr::HostArray<T, Alloc>;
+	template<class T, class Alloc> using type = arr::DeviceArray<T, Alloc>;
 };
 
 /// Explicit trait specialization mapping ArrayClass<arr::properties::Device> -> arr::DeviceArray
