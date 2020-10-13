@@ -149,6 +149,28 @@ public:
 
    using Base::size_bytes;
 
+
+   /// Call fun to fill data to array memory.
+   template<typename F>
+   auto fromHost(F&& fun, size_t offset = 0, size_t size_ = 0)-> void {
+       if (offset >= size())
+           return;
+
+       fun(host_data() + offset);
+       Base::flush_mapped_writes();
+       unmap_host_data();
+   }
+
+   template<class F, typename=typename std::enable_if_t<std::is_invocable_v<F, float*>> >
+   auto toHost( F&& fun     ///< transform function
+	           ) const-> void
+	{
+       auto copy_from = host_data();
+       Base::invalidate_mapped_cache();
+       fun(copy_from);
+       unmap_host_data();
+	}
+
    void unmap_host_data() const
    {
        if (Base::require_unmap_flush) {
