@@ -14,7 +14,6 @@ namespace arr {
 /// Covers basic array functionality. Wraps the SBO buffer.
 /// Keeps the data, handles initialization, copy/move, common interface,
 /// binding memory to buffer objects, etc...
-template<class Alloc>
 class BasicArray: public vk::Buffer {
 	static constexpr auto descriptor_flags = vk::BufferUsageFlagBits::eStorageBuffer;
 public:
@@ -22,12 +21,14 @@ public:
 
     static constexpr vuh::Device* __nulldevice = nullptr;
 BasicArray() : _dev(*__nulldevice) { }
+
 	/// Construct SBO array of given size in device memory
+    template<class Alloc>
 	BasicArray(vuh::Device& device                     ///< device to allocate array
 	           , size_t size_bytes                     ///< desired size in bytes
-	           , vk::MemoryPropertyFlags properties={} ///< additional memory property flags. These are 'added' to flags defind by allocator.
-	           , vk::BufferUsageFlags usage={}         ///< additional usage flagsws. These are 'added' to flags defined by allocator.
-	           )
+	           , vk::MemoryPropertyFlags properties ///< additional memory property flags. These are 'added' to flags defind by allocator.
+	           , vk::BufferUsageFlags usage         ///< additional usage flagsws. These are 'added' to flags defined by allocator.
+	           , Alloc *)
 	   : vk::Buffer(Alloc::makeBuffer(device, size_bytes, descriptor_flags | usage))
        , _size_bytes(size_bytes)
 	   , _dev(device)
@@ -80,19 +81,21 @@ BasicArray() : _dev(*__nulldevice) { }
 		return bool(_flags & vk::MemoryPropertyFlagBits::eHostCoherent);
 	}
 
-    void flush_mapped_writes() {
+    bool flush_mapped_writes() {
 		assert(isHostVisible());
         if (!isHostCoherent()) {
             vk::MappedMemoryRange memr(_mem, 0, VK_WHOLE_SIZE);
-            _dev.get().invalidateMappedMemoryRanges(1, &memr);
+            return vk::Result::eSuccess == _dev.get().invalidateMappedMemoryRanges(1, &memr);
         }
+        return true;
 	}
-    void invalidate_mapped_cache() const
+    bool invalidate_mapped_cache() const
     {
         if (!isHostCoherent()) {
             vk::MappedMemoryRange memr(_mem, 0, VK_WHOLE_SIZE);
-            _dev.get().flushMappedMemoryRanges(1, &memr);
+            return vk::Result::eSuccess == _dev.get().flushMappedMemoryRanges(1, &memr);
         }
+        return true;
     }
     template<typename T>
     T* mapMemory() const
@@ -122,7 +125,7 @@ BasicArray() : _dev(*__nulldevice) { }
 	/// swap the guts of two basic arrays
 	auto swap(BasicArray& other) noexcept-> void {
 		using std::swap;
-		swap(static_cast<vk::Buffer&>(&this), static_cast<vk::Buffer&>(other));
+		swap(static_cast<vk::Buffer&>(*this), static_cast<vk::Buffer&>(other));
         swap(_size_bytes, other._size_bytes);
 		swap(_mem, other._mem);
 		swap(_flags, other._flags);

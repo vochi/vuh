@@ -19,8 +19,8 @@ namespace arr {
 /// Flush/invalidate is a user responsibility!!!
 /// !!!!!
 template<class T, class Alloc>
-class HostArray: public BasicArray<Alloc> {
-	using Base = BasicArray<Alloc>;
+class HostArray: public BasicArray {
+	using Base = BasicArray;
 public:
 	using value_type = T;
     HostArray() : _data(nullptr) {}
@@ -31,7 +31,7 @@ public:
 	          , vk::MemoryPropertyFlags flags_memory={} ///< additional (to defined by allocator) memory usage flags
 	          , vk::BufferUsageFlags flags_buffer={}    ///< additional (to defined by allocator) buffer usage flags
 	          )
-	   : BasicArray<Alloc>(device, n_elements*sizeof(T), flags_memory, flags_buffer)
+	   : BasicArray(device, n_elements*sizeof(T), flags_memory, flags_buffer, (Alloc *)nullptr)
        , _data(Base::template mapMemory<T>())
 	   , _size(n_elements)
 	{}

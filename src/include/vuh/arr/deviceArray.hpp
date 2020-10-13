@@ -20,8 +20,8 @@ namespace arr {
 /// Resources allocation is handled by allocator defined by a template parameter which is supposed to provide
 /// memory and anderlying vulkan buffer with suitable flags.
 template<class T, class Alloc>
-class DeviceOnlyArray: public BasicArray<Alloc> {
-    using Base = BasicArray<Alloc>;
+class DeviceOnlyArray: public BasicArray {
+    using Base = BasicArray;
 public:
 	using value_type = T;
     DeviceOnlyArray() { }
@@ -31,7 +31,7 @@ public:
 	               , size_t n_elements    ///< number of elements
 	               , vk::MemoryPropertyFlags flags_memory={} ///< additional (to defined by allocator) memory usage flags
 	               , vk::BufferUsageFlags flags_buffer={})   ///< additional (to defined by allocator) buffer usage flags
-	   : BasicArray<Alloc>(device, n_elements*sizeof(T), flags_memory, flags_buffer)
+	   : BasicArray(device, n_elements*sizeof(T), flags_memory, flags_buffer, (Alloc *)nullptr)
 	   , _size(n_elements)
 	{}
 
@@ -49,8 +49,8 @@ private:
 /// in that case. Some do not. In case all memory is host-visible (like on integrated GPUs) using this class
 /// may result in performance penalty.
 template<class T, class Alloc>
-class DeviceArray: public BasicArray<Alloc>{
-	using Base = BasicArray<Alloc>;
+class DeviceArray: public BasicArray{
+	using Base = BasicArray;
 public:
 	using value_type = T;
     DeviceArray() {}
@@ -59,7 +59,7 @@ public:
 	           , size_t n_elements     ///< number of elements
 	           , vk::MemoryPropertyFlags flags_memory={} ///< additional (to defined by allocator) memory usage flags
 	           , vk::BufferUsageFlags flags_buffer={})   ///< additional (to defined by allocator) buffer usage flags
-	   : Base(device, n_elements*sizeof(T), flags_memory, flags_buffer)
+	   : Base(device, n_elements*sizeof(T), flags_memory, flags_buffer, (Alloc *)nullptr)
 	   , _size(n_elements)
 	{}
 
