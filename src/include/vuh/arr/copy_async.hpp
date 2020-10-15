@@ -94,6 +94,21 @@ namespace vuh {
 			{}
 		}; // struct CopyStageFromHost
 
+        /// Keeps the staging array and transfer command buffer alive till async copy completes.
+		/// Delayed action is a noop.
+		/// At construction copies the data from host to the staging buffer.
+		template<class T>
+		struct CopyStageFromHostF: public CopyDevice {
+			using StageArray = arr::HostArray<T, arr::AllocDevice<arr::properties::HostCoherent>>;
+			StageArray array; ///< staging buffer
+
+			/// Constructor. Copies data from host to the internal staging buffer.
+			template<typename F>
+			CopyStageFromHostF(vuh::Device& device, const F& fun, size_t size)
+				: CopyDevice(device), array(device, size, fun)
+			{}
+		}; // struct CopyStageFromHostF
+
 		/// Keeps the staging buffer and the transfer command buffer alive till async copy completes.
 		/// Delayed action copies data from staging buffer to the host.
 		template<class T, class IterDst>
@@ -154,6 +169,8 @@ namespace vuh {
 	/// lifetime at/till the synchrnonization point.
 	class Copy {
 	public:
+        Copy() {};
+
 		/// Takes an object of some type T, creates a CopyWrapper<T> of it on the heap
 		/// and creates an object of Copy class on top of that.
 		template<class T> 
@@ -203,6 +220,27 @@ namespace vuh {
 			return Delayed<Copy>{array.device(), Copy::wrap(detail::Noop{})};
 		} else { // copy first to staging buffer and then async copy from staging buffer to device
 			auto stage = detail::CopyStageFromHost<T>(array.device(), src_begin, src_end);
+			auto cpy = stage.copy_async(device_begin(stage.array), device_end(stage.array), dst_begin);
+			return Delayed<Copy>{std::move(cpy), Copy::wrap(std::move(stage))};
+		}
+	}
+
+    /// Async copy data from host memory to device-local array.
+	/// Blocks while for the duration of initial copy from host memory to host-visible
+	/// staging array.
+	/// Only the memory transfer between staging buffer and device memory is actually async.
+	/// If device array is host-visible the operation is fully blocking.
+	template<typename F, class T, class Alloc>
+	auto copy_async_fromHost(const F& fun, size_t size
+	           , vuh::ArrayIter<arr::DeviceArray<T, Alloc>> dst_begin
+	           ) -> vuh::Delayed<Copy>
+	{
+		auto& array = dst_begin.array();
+		if(array.isHostVisible()){ // normal copy, the function blocks till the copying is complete
+			array.fromHost(fun, dst_begin.offset(), size);
+			return Delayed<Copy>{array.device(), Copy::wrap(detail::Noop{})};
+		} else { // copy first to staging buffer and then async copy from staging buffer to device
+			auto stage = detail::CopyStageFromHostF<T>(array.device(), fun, size);
 			auto cpy = stage.copy_async(device_begin(stage.array), device_end(stage.array), dst_begin);
 			return Delayed<Copy>{std::move(cpy), Copy::wrap(std::move(stage))};
 		}
