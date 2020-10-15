@@ -30,6 +30,9 @@ namespace vuh {
 	class Delayed: public vk::Fence, private Action {
 		template<class> friend class Delayed;
 	public:
+        Delayed()
+		{}
+
 		/// Constructor. Takes ownership of the fence.
 		/// It is assumed that the fence belongs to the same device that is passed together with it.
 		Delayed(vk::Fence fence, vuh::Device& device, Action action={})
@@ -81,7 +84,7 @@ namespace vuh {
 		/// The function can be safely called arbitrary number of times.
 		/// Or not called at all.
 		auto wait(size_t period=size_t(-1) ///< time period (nanoseconds) to wait for the fence to be signalled.
-		         ) noexcept-> void
+		         ) noexcept-> bool
 		{
 			if(_device){
 				_device->waitForFences({*this}, true, period);
@@ -89,8 +92,10 @@ namespace vuh {
 					_device->destroyFence(*this);
 					static_cast<Action&>(*this)(); // exercise action
 					_device.release();
+                    return true;
 				}
 			}
+            return false;
 		}
 	private: // data
 		std::unique_ptr<Device, util::NoopDeleter<Device>> _device; ///< refers to the device owning corresponding the underlying fence.
