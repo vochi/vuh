@@ -116,7 +116,7 @@ namespace vuh {
 			/// Run the Program object on previously bound parameters, wait for completion.
 			/// @pre bacth sizes should be specified before calling this.
 			/// @pre all paramerters should be specialized, pushed and bound before calling this.
-			auto run(const vk::Semaphore *signal_sem = nullptr, const vk::Semaphore *wait_sem = nullptr, bool transfer = false)-> void {
+			auto run(const vk::Semaphore *signal_sem = nullptr, const vk::Semaphore *wait_sem = nullptr, bool transfer = false) const -> void {
                 vk::PipelineStageFlags sem_flags = vk::PipelineStageFlagBits::eAllCommands;
 				auto submitInfo = vk::SubmitInfo(wait_sem ? 1 : 0, wait_sem, &sem_flags,
                                                  1, transfer ? &_device.transferCmdBuffer() : &_device.computeCmdBuffer(),
@@ -130,7 +130,7 @@ namespace vuh {
 
 			/// Run the Program object on previously bound parameters.
 			/// @return Delayed<Compute> object used for synchronization with host
-			auto run_async()-> vuh::Delayed<Compute> {
+			auto run_async()-> vuh::Delayed<Compute> const {
 				auto buffer = _device.releaseComputeCmdBuffer();
 				auto submitInfo = vk::SubmitInfo(0, nullptr, nullptr, 1, &buffer); // submit a single command buffer
 
