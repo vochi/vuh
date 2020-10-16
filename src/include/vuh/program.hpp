@@ -116,11 +116,14 @@ namespace vuh {
 			/// Run the Program object on previously bound parameters, wait for completion.
 			/// @pre bacth sizes should be specified before calling this.
 			/// @pre all paramerters should be specialized, pushed and bound before calling this.
-			auto run()-> void {
-				auto submitInfo = vk::SubmitInfo(0, nullptr, nullptr, 1, &_device.computeCmdBuffer()); // submit a single command buffer
+			auto run(const vk::Semaphore *signal_sem = nullptr, const vk::Semaphore *wait_sem = nullptr, bool transfer = false)-> void {
+                vk::PipelineStageFlags sem_flags = vk::PipelineStageFlagBits::eAllCommands;
+				auto submitInfo = vk::SubmitInfo(wait_sem ? 1 : 0, wait_sem, &sem_flags,
+                                                 1, transfer ? &_device.transferCmdBuffer() : &_device.computeCmdBuffer(),
+                                                 signal_sem ? 1 : 0, signal_sem); // submit a single command buffer
 
 				// submit the command buffer to the queue and set up a fence.
-				auto queue = _device.computeQueue();
+				auto queue = transfer ? _device.transferQueue() : _device.computeQueue();
 				queue.submit({submitInfo}, nullptr);
 				queue.waitIdle();
 			}
