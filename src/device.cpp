@@ -334,6 +334,8 @@ namespace vuh {
     void Device::resetComputeCmdBuffer()
     {
         _cmdbuf_compute.reset({});
+        _cmdbuf_compute.begin(::vk::CommandBufferBeginInfo());
+        _cmdbuf_compute.end();
         //freeCmdBuffer(releaseComputeCmdBuffer());
     }
 
