@@ -131,7 +131,7 @@ namespace vuh {
         if (res != VK_SUCCESS)
             return 0;
 
-        ver = std::min(ver, VK_HEADER_VERSION_COMPLETE);
+        ver = std::min<uint32_t>(ver, VK_HEADER_VERSION_COMPLETE);
         return ver;
     }
 
