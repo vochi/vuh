@@ -61,8 +61,8 @@ namespace {
 	/// Compute and transport queue family id may point to the same queue.
 	auto createDevice(vuh::Instance& instance,
                       const vk::PhysicalDevice& physicalDevice ///< physical device to wrap
-	                  , uint32_t compute_family_id             ///< index of queue family supporting compute operations
-	                  , uint32_t transfer_family_id            ///< index of queue family supporting transfer operations
+	                  , uint32_t &compute_family_id             ///< index of queue family supporting compute operations
+	                  , uint32_t &transfer_family_id            ///< index of queue family supporting transfer operations
 	                  , const std::vector<const char*> &layers
                       , const std::vector<const char*> &extensions
                       , vk::PhysicalDeviceFeatures *fe = nullptr)-> vk::Device
