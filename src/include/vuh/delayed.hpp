@@ -62,7 +62,10 @@ namespace vuh {
 
 		Delayed(const Delayed&) = delete;
 		auto operator= (const Delayed&)-> Delayed& = delete;
-		Delayed(Delayed&& other) = default;
+
+		// template<typename = std::enable_if_t<std::is_same_v<Action, detail::Noop> == true>>
+		Delayed(Delayed&& other) : _device(std::move(other._device)) { }
+		// Delayed(Delayed&& other) = default;
 
 		/// Move assignment.
 		/// In case the current object owns the unsignalled fence this is going to block
