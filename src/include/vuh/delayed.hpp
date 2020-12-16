@@ -63,17 +63,17 @@ namespace vuh {
 		Delayed(const Delayed&) = delete;
 		auto operator= (const Delayed&)-> Delayed& = delete;
 
-		// template<typename = std::enable_if_t<std::is_same_v<Action, detail::Noop> == true>>
-		Delayed(Delayed&& other) : _device(std::move(other._device)) { }
-		// Delayed(Delayed&& other) = default;
+		Delayed(Delayed&& other) {
+			*this = std::move(other);
+		}
 
 		/// Move assignment.
 		/// In case the current object owns the unsignalled fence this is going to block
 		/// till that is signalled and only then proceed to taking over the move-from object.
 		auto operator= (Delayed&& other) noexcept-> Delayed& {
 			wait();
-			static_cast<vk::Fence&>(*this) = std::move(static_cast<vk::Fence&>(other));
-			static_cast<Action&>(*this) = std::move(static_cast<Action&>(other));
+			static_cast<vk::fence&>(*this) = std::move(static_cast<vk::fence&>(other));
+			static_cast<action&>(*this) = std::move(static_cast<action&>(other));
 			_device = std::move(other._device);
 			return *this;
 		}
