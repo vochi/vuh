@@ -72,8 +72,8 @@ namespace vuh {
 		/// till that is signalled and only then proceed to taking over the move-from object.
 		auto operator= (Delayed&& other) noexcept-> Delayed& {
 			wait();
-			static_cast<vk::fence&>(*this) = std::move(static_cast<vk::fence&>(other));
-			static_cast<action&>(*this) = std::move(static_cast<action&>(other));
+			static_cast<vk::Fence&>(*this) = std::move(static_cast<vk::Fence&>(other));
+			static_cast<Action&>(*this) = std::move(static_cast<Action&>(other));
 			_device = std::move(other._device);
 			return *this;
 		}
