@@ -62,7 +62,10 @@ namespace vuh {
 
 		Delayed(const Delayed&) = delete;
 		auto operator= (const Delayed&)-> Delayed& = delete;
-		Delayed(Delayed&& other) = default;
+
+		Delayed(Delayed&& other) {
+			*this = std::move(other);
+		}
 
 		/// Move assignment.
 		/// In case the current object owns the unsignalled fence this is going to block
