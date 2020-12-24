@@ -87,7 +87,7 @@ namespace vuh {
 		         ) noexcept-> bool
 		{
 			if(_device){
-				_device->waitForFences({*this}, true, period);
+				(void)_device->waitForFences({*this}, true, period);
 				if(_device->getFenceStatus(*this) == vk::Result::eSuccess){
 					_device->destroyFence(*this);
 					static_cast<Action&>(*this)(); // exercise action

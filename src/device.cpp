@@ -317,9 +317,9 @@ namespace vuh {
 		auto pipelineCI = vk::ComputePipelineCreateInfo(flags
 																		, shader_stage_info, pipe_layout);
 		auto res = createComputePipeline(pipe_cache, pipelineCI, nullptr);
-        if (res.result != vk::Result::eSuccess || !(static_cast<vk::Pipeline>(res)))
+        if (res.result != vk::Result::eSuccess || !res.value)
             throw std::runtime_error("vuh: createComputePipeline failed");
-        return static_cast<vk::Pipeline>(res);
+        return res.value;
 	}
 
 	/// Detach the current compute command buffer for sync operations and create the new one.
