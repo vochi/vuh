@@ -239,18 +239,21 @@ public:
    /// Call back fun on data of array.
    template<class F, typename=typename std::enable_if_t<std::is_invocable_v<F, float*>> >
    auto toHost( F&& fun     ///< transform function
-	           ) const-> void
+	           , size_t offset = 0) const-> void
 	{
+       if (offset >= size())
+           return;
+
 		if(Base::isHostVisible()){
 			auto copy_from = host_data();
             Base::invalidate_mapped_cache();
-            fun(copy_from);
+            fun(copy_from + offset);
             unmap_host_data();
 		} else {
 			using std::begin; using std::end;
 			auto stage_buf = HostArray<T, AllocDevice<properties::HostCached>>(Base::_dev, size());
 			copyBuf(Base::_dev, *this, stage_buf, size_bytes());
-            fun(begin(stage_buf));
+            fun(begin(stage_buf) + offset);
 		}
 	}
 
